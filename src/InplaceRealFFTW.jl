@@ -14,7 +14,7 @@ struct PaddedArray{T<:Float3264,N} <: AbstractArray{Complex{T},N}
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     fsize = [size(rr)...]
-    iseven(fsize[1])|| throw(ArgumentError("First dimension of allocated array must have even number of elements")) # change to `assumption || throw(ArgumentError("…")`
+    iseven(fsize[1])|| throw(ArgumentError("First dimension of allocated array must have even number of elements"))
     (nx == fsize[1]-2 || nx == fsize[1]-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
     fsize[1] = fsize[1]/2
     rsize = (fsize...)
@@ -36,9 +36,8 @@ struct PaddedArray{T<:Float3264,N} <: AbstractArray{Complex{T},N}
 
 end # struct
 
-PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N}(rr::Array{T,N},nx::Int)
-PaddedArray(r::SubArray{T,N,P,I,L}) where {T,N,P,I,L} = PaddedArray{T,N}(r::SubArray{T,N,P,I,L})
-PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c::Array{Complex{T},N},nx::Int)
+PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N}(rr,nx)
+PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c,nx)
 
 size(S::PaddedArray) = size(S.c)
 IndexStyle(::Type{T}) where {T<:PaddedArray} = IndexLinear()
@@ -71,29 +70,6 @@ function PaddedArray(a::Array{T,N}) where {T<:Float3264,N}
   return t
 end
 
-
-randt(dims...) = PaddedArray(iseven(dims[1]) ? rand(dims[1]+2,dims[2:end]...) : rand(dims[1]+1,dims[2:end]...), dims[1])
-
-function readfield!(filename::String,f::PaddedArray{T,3}) where {T<:Union{Float32,Float64}}
-  nx,ny,nz = size(f.r)
-  dtype,padded = checkinput(filename,nx,ny,nz)
-  dtype == T || error("Different Float precisions")
-  if padded
-    read!(filename,f.rr)
-  else
-    rr = f.rr
-    sb = sizeof(T)
-    dimm = (nx+2,ny,nz)
-    open(filename) do file
-      for k in 1:nz
-        for j in 1:ny
-          unsafe_read(file,pointer(rr,sub2ind(dimm,1,j,k)),nx*sb)
-        end
-      end
-    end
-  end
-  return f
-end
 ###########################################################################################
 
 function plan_rfft!(X::PaddedArray{T,N}, region;
