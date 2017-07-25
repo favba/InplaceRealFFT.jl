@@ -41,8 +41,10 @@ PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c,nx)
 
 size(S::PaddedArray) = size(S.c)
 IndexStyle(::Type{T}) where {T<:PaddedArray} = IndexLinear()
-Base.@propagate_inbounds getindex(S::PaddedArray,I...) = S.c[I...]
-Base.@propagate_inbounds setindex!(S::PaddedArray,v,I) =  setindex!(S.c,v,I)
+Base.@propagate_inbounds getindex(S::PaddedArray, i::Int) = getindex(S.c,i)
+Base.@propagate_inbounds getindex(S::PaddedArray, I::Vararg{Int, N}) where N = getindex(S.c,I)
+Base.@propagate_inbounds setindex!(S::PaddedArray,v,i::Int) =  setindex!(S.c,v,i)
+Base.@propagate_inbounds setindex!(S::PaddedArray,v,I::Vararg{Int,N}) where N =  setindex!(S.c,v,I)
 eltype(S::PaddedArray{T,N}) where {T,N} = Complex{T} 
 copy(S::PaddedArray) = PaddedArray(copy(S.c),size(S.r)[1])
 similar(f::PaddedArray) = PaddedArray(eltype(f.r),size(f.r))
