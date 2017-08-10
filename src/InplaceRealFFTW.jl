@@ -3,11 +3,13 @@ module InplaceRealFFTW
 
 import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex
 
-export PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!
+export PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!, rawreal
 
 const Float3264 = Union{Float32,Float64}
 
-struct PaddedArray{T<:Float3264,N} <: AbstractArray{Complex{T},N}
+abstract type AbstractPaddedArray{T,N} <: AbstractArray{Complex{T},N} end
+
+struct PaddedArray{T<:Float3264,N} <: AbstractPaddedArray{T,N}
   c::Array{Complex{T},N} # Complex view of the array
   r::SubArray # Real view skipping padding
   rr::Array{T,N} # Raw real data, including padding
@@ -39,21 +41,23 @@ end # struct
 PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N}(rr,nx)
 PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c,nx)
 
-size(S::PaddedArray) = size(S.c)
-IndexStyle(::Type{T}) where {T<:PaddedArray} = IndexLinear()
-Base.@propagate_inbounds getindex(S::PaddedArray, i::Int) = getindex(S.c,i)
-Base.@propagate_inbounds getindex(S::PaddedArray, I::Vararg{Int, N}) where N = getindex(S.c,I)
-Base.@propagate_inbounds setindex!(S::PaddedArray,v,i::Int) =  setindex!(S.c,v,i)
-Base.@propagate_inbounds setindex!(S::PaddedArray,v,I::Vararg{Int,N}) where N =  setindex!(S.c,v,I)
-eltype(S::PaddedArray{T,N}) where {T,N} = Complex{T} 
-copy(S::PaddedArray) = PaddedArray(copy(S.c),size(S.r)[1])
-similar(f::PaddedArray) = PaddedArray(eltype(f.r),size(f.r))
-real(S::PaddedArray) = S.r
-complex(S::PaddedArray) = S.c
-broadcast(op::Function, A::PaddedArray, other) = broadcast(op, A.c, other)
-broadcast(op::Function, other, A::PaddedArray) = broadcast(op, other, A.c)
-broadcast(op::Function, A::PaddedArray, other::PaddedArray) = broadcast(op, other.c, A.c)
-broadcast(op::Function, A::PaddedArray) = broadcast(op, A.c)
+@inline real(S::PaddedArray) = S.r
+@inline complex(S::PaddedArray) = S.c
+@inline rawreal(S::PaddedArray) = S.rr
+
+size(S::AbstractPaddedArray) = size(complex(S))
+IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
+Base.@propagate_inbounds getindex(S::AbstractPaddedArray, i::Int) = getindex(complex(S),i)
+Base.@propagate_inbounds getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = getindex(complex(S),I...)
+Base.@propagate_inbounds setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
+Base.@propagate_inbounds setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} =  setindex!(complex(S),v,I...)
+eltype(S::AbstractPaddedArray{T,N}) where {T,N} = Complex{T} 
+copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
+similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray(T,size(real(f)))
+broadcast(op::Function, A::AbstractPaddedArray, other) = broadcast(op, complex(A), other)
+broadcast(op::Function, other, A::AbstractPaddedArray) = broadcast(op, other, complex(A))
+broadcast(op::Function, A::AbstractPaddedArray, other::AbstractPaddedArray) = broadcast(op, complex(other), complex(A))
+broadcast(op::Function, A::AbstractPaddedArray) = broadcast(op, complex(A))
 
 function PaddedArray(t::DataType,ndims::Vararg{Integer,N}) where N
   fsize = [ndims...]
@@ -74,63 +78,63 @@ end
 
 ###########################################################################################
 
-function plan_rfft!(X::PaddedArray{T,N}, region;
+function plan_rfft!(X::AbstractPaddedArray{T,N}, region;
                    flags::Integer=FFTW.ESTIMATE,
                    timelimit::Real=FFTW.NO_TIMELIMIT) where {T<:Float3264,N}
 
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.ESTIMATE != 0
-    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(X.r, X.c, region, flags, timelimit)
+    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), complex(X), region, flags, timelimit)
   else
     x = similar(X)
-    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(x.r, x.c, region, flags, timelimit)
+    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), complex(x), region, flags, timelimit)
   end
   return p
 end
 
-plan_rfft!(f::PaddedArray;kws...) = plan_rfft!(f,1:ndims(f.r);kws...)
+plan_rfft!(f::AbstractPaddedArray;kws...) = plan_rfft!(f,1:ndims(f);kws...)
 
-*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::PaddedArray{T,N}) where {T<:Float3264,N} = (A_mul_B!(f.c,p,f.r);f)
+*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (A_mul_B!(complex(f),p,real(f));f)
 
-rfft!(f::PaddedArray, region=1:ndims(f.r)) = plan_rfft!(f,region) * f
+rfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_rfft!(f,region) * f
 
 
 ##########################################################################################
 
-function plan_brfft!(X::PaddedArray{T,N}, region;
+function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
                     flags::Integer=FFTW.PRESERVE_INPUT,
                     timelimit::Real=FFTW.NO_TIMELIMIT) where {T<:Float3264,N}
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.PRESERVE_INPUT != 0
     a = similar(X)
-    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(a.c, a.r, region, flags,timelimit)
+    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex(a), real(a), region, flags,timelimit)
   else
-    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(X.c, X.r, region, flags,timelimit)
+    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex(X), complex(X), region, flags,timelimit)
   end
 end
 
-function plan_irfft!(x::PaddedArray{T,N}, region; kws...) where {T,N}
-  Base.DFT.ScaledPlan(plan_brfft!(x, region; kws...),Base.DFT.normalization(T, size(x.r), region))
+function plan_irfft!(x::AbstractPaddedArray{T,N}, region; kws...) where {T,N}
+  Base.DFT.ScaledPlan(plan_brfft!(x, region; kws...),Base.DFT.normalization(T, size(real(x)), region))
 end
 
-plan_irfft!(f::PaddedArray;kws...) = plan_irfft!(f,1:ndims(f.c);kws...)
+plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
-*(p::Base.DFT.ScaledPlan,f::PaddedArray{T,N}) where {T<:Float3264,N} = begin
-  A_mul_B!(f.r,p.p,f.c)
-  scale!(f.rr,p.scale)
+*(p::Base.DFT.ScaledPlan,f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = begin
+  A_mul_B!(real(f),p.p,complex(f))
+  scale!(rawreal(f),p.scale)
   f
 end
 
-irfft!(f::PaddedArray, region=1:ndims(f.c)) = plan_irfft!(f,region) * f
+irfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_irfft!(f,region) * f
 
 ##########################################################################################
 
-function /(f::PaddedArray{T,N},p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}) where {T<:Float3264,N}
+function /(f::AbstractPaddedArray{T,N},p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}) where {T<:Float3264,N}
   isdefined(p,:pinv) || (p.pinv = plan_irfft!(f,p.region))
   return p.pinv * f
 end
 
-function \(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::PaddedArray{T,N}) where {T<:Float3264,N}
+function \(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N}
   isdefined(p,:pinv) || (p.pinv = plan_irfft!(f,p.region))
   return p.pinv * f
 end
