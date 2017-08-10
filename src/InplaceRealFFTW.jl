@@ -3,7 +3,7 @@ module InplaceRealFFTW
 
 import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex
 
-export PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!, rawreal
+export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!, rawreal
 
 const Float3264 = Union{Float32,Float64}
 
@@ -16,7 +16,7 @@ struct PaddedArray{T<:Float3264,N} <: AbstractPaddedArray{T,N}
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     fsize = [size(rr)...]
-    iseven(fsize[1])|| throw(ArgumentError("First dimension of allocated array must have even number of elements"))
+    iseven(fsize[1]) || throw(ArgumentError("First dimension of allocated array must have even number of elements"))
     (nx == fsize[1]-2 || nx == fsize[1]-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
     fsize[1] = fsize[1]/2
     rsize = (fsize...)
