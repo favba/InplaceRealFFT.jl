@@ -7,9 +7,9 @@ export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!
 
 const Float3264 = Union{Float32,Float64}
 
-abstract type AbstractPaddedArray{T,N} <: AbstractArray{Complex{T},N} end
+abstract type AbstractPaddedArray{T,N,L} <: AbstractArray{Complex{T},N} end
 
-struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
+struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
   c::Array{Complex{T},N} # Complex view of the array
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int64}},L} # Real view skipping padding
   rr::Array{T,N} # Raw real data, including padding
@@ -48,12 +48,12 @@ PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N, N==1 
 size(S::AbstractPaddedArray) = size(complex(S))
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
 Base.@propagate_inbounds getindex(S::AbstractPaddedArray, i::Int) = getindex(complex(S),i)
-Base.@propagate_inbounds getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = getindex(complex(S),I...)
+Base.@propagate_inbounds getindex(S::AbstractPaddedArray{T,N,L}, I::Vararg{Int, N}) where {T,N,L} = getindex(complex(S),I...)
 Base.@propagate_inbounds setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
-Base.@propagate_inbounds setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} =  setindex!(complex(S),v,I...)
-eltype(S::AbstractPaddedArray{T,N}) where {T,N} = Complex{T} 
+Base.@propagate_inbounds setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
+eltype(S::AbstractPaddedArray{T,N,L}) where {T,N,L} = Complex{T} 
 copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
-similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray(T,size(real(f)))
+similar(f::AbstractPaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N,L}(similar(f.c),size(real(f))[1])
 broadcast(op::Function, A::AbstractPaddedArray, other) = broadcast(op, complex(A), other)
 broadcast(op::Function, other, A::AbstractPaddedArray) = broadcast(op, other, complex(A))
 broadcast(op::Function, A::AbstractPaddedArray, other::AbstractPaddedArray) = broadcast(op, complex(other), complex(A))
