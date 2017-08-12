@@ -14,7 +14,7 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int64}},L} # Real view skipping padding
   rr::Array{T,N} # Raw real data, including padding
 
-  function PaddedArray{T,N,L}(rr::Array{T,N},nx::Int) where {T<:Float3264,N,L}
+  function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     fsize = [size(rr)...]
     iseven(fsize[1]) || throw(ArgumentError("First dimension of allocated array must have even number of elements"))
     (nx == fsize[1]-2 || nx == fsize[1]-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
@@ -23,23 +23,23 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
     c = reinterpret(Complex{T}, rr, rsize)
     fsize[1] = nx
     r = view(rr,(1:l for l in fsize)...)
-    return new{T,N,L}(c,r,rr)
+    return new{T,N,N==1?true:false}(c,r,rr)
   end # function
 
-  function PaddedArray{T,N,L}(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N,L}
+  function PaddedArray{T,N}(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N}
     fsize = [size(c)...]
     (iseven(nx) ? fsize[1]*2-2 == nx : fsize[1]*2-1 == nx) || throw(ArgumentError("The allocated array does not have the proper padding"))
     fsize[1] = fsize[1]*2
     rr = reinterpret(T, c, (fsize...))
     fsize[1] = nx
     r = view(rr,(1:l for l in fsize)...)
-    return new{T,N,L}(c,r,rr)
+    return new{T,N,N==1?true:false}(c,r,rr)
   end # function
 
 end # struct
 
-PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N, N==1 ? true : false}(rr,nx)
-PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N, N==1 ? true : false}(c,nx)
+PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N}(rr,nx)
+PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c,nx)
 
 @inline real(S::PaddedArray) = S.r
 @inline complex(S::PaddedArray) = S.c
