@@ -1,7 +1,7 @@
 __precompile__()
 module InplaceRealFFTW
 
-import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex
+import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex, read!
 
 export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!, rawreal
 
@@ -137,6 +137,44 @@ end
 function \(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N}
   isdefined(p,:pinv) || (p.pinv = plan_irfft!(f,p.region))
   return p.pinv * f
+end
+
+##########################################################################################
+
+function read!(stream::IO, field::PaddedArray{T,N,L}; padded::Bool=false) where {T,N,L}
+  if padded
+    read!(stream,rawreal(field))
+  else
+    if L == true
+      read!(stream,rawreal(field))
+    else
+      dims = size(real(field))
+      nx = dims[1]
+      nb = sizeof(T)*nx
+      npencils = prod(dims)/nx
+      npad = iseven(nx)? 2 : 1
+      for i=0:(npencils-1)
+        unsafe_read(stream,Ref(rawreal(field),Int((nx+npad)*i+1)),nb)
+      end
+    end
+  end
+  return field
+end
+
+function read!(file::AbstractString, field::PaddedArray; padded::Bool=false)
+  open(file) do io 
+   return read!(io,field,padded=padded) 
+  end
+end
+
+function PaddedArray(stream,T::DataType,dims; padded::Bool=false)
+  field = PaddedArray(T,dims)
+  return read!(stream,field,padded=padded)
+end
+
+function PaddedArray(stream,dims; padded::Bool=false)
+  field = PaddedArray(dims)
+  return read!(stream,field,padded=padded)
 end
 
 end # module
