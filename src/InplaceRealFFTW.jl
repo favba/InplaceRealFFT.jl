@@ -53,11 +53,9 @@ Base.@propagate_inbounds setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!
 Base.@propagate_inbounds setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
 eltype(S::AbstractPaddedArray{T,N,L}) where {T,N,L} = Complex{T} 
 copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
+similar(f::AbstractPaddedArray{T,N,L},typ::DataType,dims::Tuple) where {T,N,L} = PaddedArray(typ,dims)
+similar(f::AbstractPaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray(T,dims)
 similar(f::AbstractPaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
-broadcast(op::Function, A::AbstractPaddedArray, other) = broadcast(op, complex(A), other)
-broadcast(op::Function, other, A::AbstractPaddedArray) = broadcast(op, other, complex(A))
-broadcast(op::Function, A::AbstractPaddedArray, other::AbstractPaddedArray) = broadcast(op, complex(other), complex(A))
-broadcast(op::Function, A::AbstractPaddedArray) = broadcast(op, complex(A))
 
 function PaddedArray(t::DataType,ndims::Vararg{Integer,N}) where N
   fsize = [ndims...]
@@ -122,7 +120,7 @@ plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 *(p::Base.DFT.ScaledPlan,f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = begin
   A_mul_B!(real(f),p.p,complex(f))
   scale!(rawreal(f),p.scale)
-  f
+  real(f)
 end
 
 irfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_irfft!(f,region) * f
