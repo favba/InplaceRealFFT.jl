@@ -14,7 +14,7 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int64}},L} # Real view skipping padding
   rr::Array{T,N} # Raw real data, including padding
 
-  function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
+  function PaddedArray{T,N,L}(rr::Array{T,N},nx::Int) where {T<:Float3264,N,L}
     fsize = [size(rr)...]
     iseven(fsize[1]) || throw(ArgumentError("First dimension of allocated array must have even number of elements"))
     (nx == fsize[1]-2 || nx == fsize[1]-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
@@ -23,23 +23,23 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
     c = reinterpret(Complex{T}, rr, rsize)
     fsize[1] = nx
     r = view(rr,(1:l for l in fsize)...)
-    return new{T,N,N==1?true:false}(c,r,rr)
+    return new{T,N,L}(c,r,rr)
   end # function
 
-  function PaddedArray{T,N}(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N}
+  function PaddedArray{T,N,L}(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N,L}
     fsize = [size(c)...]
     (iseven(nx) ? fsize[1]*2-2 == nx : fsize[1]*2-1 == nx) || throw(ArgumentError("The allocated array does not have the proper padding"))
     fsize[1] = fsize[1]*2
     rr = reinterpret(T, c, (fsize...))
     fsize[1] = nx
     r = view(rr,(1:l for l in fsize)...)
-    return new{T,N,N==1?true:false}(c,r,rr)
+    return new{T,N,L}(c,r,rr)
   end # function
 
 end # struct
 
-PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N}(rr,nx)
-PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N}(c,nx)
+PaddedArray(rr::Array{T,N},nx::Int) where {T,N} = PaddedArray{T,N,N==1?true:false}(rr,nx)
+PaddedArray(c::Array{Complex{T},N},nx::Int) where {T,N} = PaddedArray{T,N,N==1?true:false}(c,nx)
 
 @inline real(S::PaddedArray) = S.r
 @inline complex(S::PaddedArray) = S.c
@@ -55,7 +55,7 @@ eltype(S::AbstractPaddedArray{T,N,L}) where {T,N,L} = Complex{T}
 copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
 similar(f::AbstractPaddedArray{T,N,L},typ::DataType,dims::Tuple) where {T,N,L} = PaddedArray(typ,dims)
 similar(f::AbstractPaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray(T,dims)
-similar(f::AbstractPaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
+similar(f::AbstractPaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N,L}(similar(f.c),size(real(f))[1])
 
 function PaddedArray(t::DataType,ndims::Vararg{Integer,N}) where N
   fsize = [ndims...]
