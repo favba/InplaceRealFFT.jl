@@ -51,7 +51,6 @@ Base.@propagate_inbounds getindex(S::AbstractPaddedArray, i::Int) = getindex(com
 Base.@propagate_inbounds getindex(S::AbstractPaddedArray{T,N,L}, I::Vararg{Int, N}) where {T,N,L} = getindex(complex(S),I...)
 Base.@propagate_inbounds setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
 Base.@propagate_inbounds setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
-eltype(S::AbstractPaddedArray{T,N,L}) where {T,N,L} = Complex{T} 
 copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
 similar(f::AbstractPaddedArray{T,N,L},typ::DataType,dims::Tuple) where {T,N,L} = PaddedArray(typ,dims)
 similar(f::AbstractPaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray(T,dims)
@@ -68,7 +67,7 @@ PaddedArray(t::DataType,ndims::NTuple{N,Integer}) where N = PaddedArray(t,ndims.
 PaddedArray(ndims::Vararg{Integer,N}) where N = PaddedArray(Float64,ndims)
 PaddedArray(ndims::NTuple{N,Integer}) where N = PaddedArray(Float64,ndims...)
 
-function PaddedArray(a::Array{T,N}) where {T<:Float3264,N}
+function PaddedArray(a::AbstractArray{T,N}) where {T<:Float3264,N}
   t = PaddedArray(T,size(a))
   t.r .= a 
   return t
