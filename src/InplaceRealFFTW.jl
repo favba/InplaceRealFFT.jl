@@ -2,6 +2,8 @@ __precompile__()
 module InplaceRealFFTW
 
 import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex, read!
+import FFTW
+import AbstractFFTs
 
 export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, irfft!, rawreal
 
@@ -111,12 +113,12 @@ function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
 end
 
 function plan_irfft!(x::AbstractPaddedArray{T,N}, region; kws...) where {T,N}
-  Base.DFT.ScaledPlan(plan_brfft!(x, region; kws...),Base.DFT.normalization(T, size(real(x)), region))
+  AbstractFFTs.ScaledPlan(plan_brfft!(x, region; kws...),AbstractFFTs.normalization(T, size(real(x)), region))
 end
 
 plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
-*(p::Base.DFT.ScaledPlan,f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = begin
+*(p::AbstractFFTs.ScaledPlan,f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = begin
   A_mul_B!(real(f),p.p,complex(f))
   scale!(rawreal(f),p.scale)
   real(f)
