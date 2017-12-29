@@ -1,6 +1,8 @@
 using InplaceRealFFTW
 using Base.Test
 
+VERSION >= v"0.7-" && using FFTW
+
 # write your own tests here
 a = rand(8,4,4)
 b = PaddedArray(a)
