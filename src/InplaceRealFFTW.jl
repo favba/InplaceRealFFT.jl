@@ -18,7 +18,7 @@ abstract type AbstractPaddedArray{T,N,L} <: DenseArray{Complex{T},N} end
 
 struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
   c::Array{Complex{T},N} # Complex view of the array
-  r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int64}},L} # Real view skipping padding
+  r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
   rr::Array{T,N} # Raw real data, including padding
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
