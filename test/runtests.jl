@@ -45,3 +45,8 @@ for s in ((8,4,4),(9,4,4),(8,),(9,))
   write(f,a)
   @test a == real(PaddedArray{Float32}(f,s,false))
 end
+
+a = rand(4,4)
+b = PaddedArray(a)
+rfft!(b)
+@test (brfft!(b) ./ 16) ≈ a

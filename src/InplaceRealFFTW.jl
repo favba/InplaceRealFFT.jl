@@ -10,7 +10,7 @@ end
 
 const M = VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 
-export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, irfft!
+export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, brfft!, irfft!
 
 const Float3264 = Union{Float32,Float64}
 
@@ -108,6 +108,8 @@ end
 plan_brfft!(f::AbstractPaddedArray;kws...) = plan_brfft!(f,1:ndims(f);kws...)
 
 *(p::FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (A_mul_B!(real(f),p,complex(f)); real(f))
+
+brfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_brfft!(f,region) * f
 
 function plan_irfft!(x::AbstractPaddedArray{T,N}, region; kws...) where {T,N}
   M.ScaledPlan(plan_brfft!(x, region; kws...),M.normalization(T, size(real(x)), region))
