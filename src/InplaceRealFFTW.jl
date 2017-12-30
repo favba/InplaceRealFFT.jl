@@ -142,17 +142,13 @@ function read!(stream::IO, field::PaddedArray{T,N,L}, padded::Bool) where {T,N,L
   if padded
     read!(stream,rr)
   else
-    if L === true
-      read!(stream,rr)
-    else
-      dims = size(real(field))
-      nx = dims[1]
-      nb = sizeof(T)*nx
-      npencils = prod(dims)÷nx
-      npad = iseven(nx) ? 2 : 1
-      for i=0:(npencils-1)
-        unsafe_read(stream,Ref(rr,Int((nx+npad)*i+1)),nb)
-      end
+    dims = size(real(field))
+    nx = dims[1]
+    nb = sizeof(T)*nx
+    npencils = prod(dims)÷nx
+    npad = iseven(nx) ? 2 : 1
+    for i=0:(npencils-1)
+      unsafe_read(stream,Ref(rr,Int((nx+npad)*i+1)),nb)
     end
   end
   return field
