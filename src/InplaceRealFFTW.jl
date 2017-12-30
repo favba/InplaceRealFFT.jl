@@ -10,7 +10,7 @@ end
 
 const M = VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 
-export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, irfft!, rawreal
+export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, irfft!
 
 const Float3264 = Union{Float32,Float64}
 
@@ -19,21 +19,6 @@ abstract type AbstractPaddedArray{T,N,L} <: DenseArray{Complex{T},N} end
 struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
   c::Array{Complex{T},N} # Complex view of the array
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
-  rr::Array{T,N} # Raw real data, including padding
-
-  function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
-    rrsize = size(rr)
-    fsize = rrsize[1]
-    iseven(fsize) || throw(ArgumentError("First dimension of allocated array must have even number of elements"))
-    (nx == fsize-2 || nx == fsize-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
-    fsize = fsize÷2
-    csize = (fsize, rrsize[2:end]...)
-    #c = reinterpret(Complex{T}, rr, csize)
-    c = unsafe_wrap(Array{Complex{T},N},reinterpret(Ptr{Complex{T}},pointer(rr)),csize)
-    rsize = (nx,rrsize[2:end]...)
-    r = view(rr,(1:l for l in rsize)...)
-    return new{T, N, N === 1 ? true : false}(c,r,rr)
-  end # function
 
   function PaddedArray{T,N}(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N}
     csize = size(c)
@@ -45,17 +30,15 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
     rr = unsafe_wrap(Array{T,N},reinterpret(Ptr{T},pointer(c)),rrsize)
     rsize = (nx,rrsize[2:end]...)
     r = view(rr,(1:l for l in rsize)...)
-    return new{T, N, N === 1 ? true : false}(c,r,rr)
+    return new{T, N, N === 1 ? true : false}(c,r)
   end # function
 
 end # struct
 
-PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr,nx)
 PaddedArray(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(c,nx)
 
 @inline real(S::PaddedArray) = S.r
 @inline complex(S::PaddedArray) = S.c
-@inline rawreal(S::PaddedArray) = S.rr
 
 size(S::AbstractPaddedArray) = size(complex(S))
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
@@ -70,9 +53,8 @@ similar(f::AbstractPaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f
 similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
-  fsize = ndims[1]
-  iseven(fsize) ? fsize+=2 : fsize+=1
-  a = Array{T,N}((fsize,ndims[2:end]...))
+  fsize = ndims[1]÷2 + 1
+  a = Array{Complex{T},N}((fsize,ndims[2:end]...))
   PaddedArray{T,N}(a,ndims[1])
 end
 PaddedArray{T}(ndims::NTuple{N,Integer}) where {T,N} = PaddedArray{T}(ndims...)
@@ -135,7 +117,7 @@ plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
 *(p::M.ScaledPlan,f::AbstractPaddedArray) = begin
   p.p * f
-  scale!(rawreal(f),p.scale)
+  scale!(parent(real(f)),p.scale)
   real(f)
 end
 
@@ -156,11 +138,12 @@ end
 ##########################################################################################
 
 function read!(stream::IO, field::PaddedArray{T,N,L}, padded::Bool) where {T,N,L}
+  rr = parent(field.r)
   if padded
-    read!(stream,rawreal(field))
+    read!(stream,rr)
   else
     if L === true
-      read!(stream,rawreal(field))
+      read!(stream,rr)
     else
       dims = size(real(field))
       nx = dims[1]
@@ -168,7 +151,7 @@ function read!(stream::IO, field::PaddedArray{T,N,L}, padded::Bool) where {T,N,L
       npencils = prod(dims)÷nx
       npad = iseven(nx) ? 2 : 1
       for i=0:(npencils-1)
-        unsafe_read(stream,Ref(rawreal(field),Int((nx+npad)*i+1)),nb)
+        unsafe_read(stream,Ref(rr,Int((nx+npad)*i+1)),nb)
       end
     end
   end
