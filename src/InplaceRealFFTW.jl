@@ -64,28 +64,27 @@ Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N,L}, I::Vara
 Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
 Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
 copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
-similar(f::AbstractPaddedArray{T,N,L},typ::DataType,dims::Tuple) where {T,N,L} = PaddedArray{typ}(dims)
+similar(f::AbstractPaddedArray,::Type{T},dims::Tuple{Vararg{Int64,N}}) where {T, N} = PaddedArray{T}(dims)
 similar(f::AbstractPaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray{T}(dims)
-similar(f::AbstractPaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
+similar(f::AbstractPaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f)))
+similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
 
-function PaddedArray{T,N}(ndims::Vararg{Integer,N}) where {T,N}
+function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
   fsize = ndims[1]
   iseven(fsize) ? fsize+=2 : fsize+=1
   a = Array{T,N}((fsize,ndims[2:end]...))
   PaddedArray{T,N}(a,ndims[1])
 end
-PaddedArray{T,N}(ndims::NTuple{N,Integer}) where {T,N} = PaddedArray{T,N}(ndims...)
-PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N} = PaddedArray{T,N}(ndims)
+PaddedArray{T}(ndims::NTuple{N,Integer}) where {T,N} = PaddedArray{T}(ndims...)
+PaddedArray(ndims::Vararg{Integer,N}) where N = PaddedArray{Float64}(ndims...)
+PaddedArray(ndims::NTuple{N,Integer}) where N = PaddedArray{Float64}(ndims...)
 
-PaddedArray{T}(ndims::NTuple{N,Integer}) where {T,N} = PaddedArray{T,N}(ndims...)
-PaddedArray(ndims::Vararg{Integer,N}) where N = PaddedArray{Float64,N}(ndims...)
-PaddedArray(ndims::NTuple{N,Integer}) where N = PaddedArray{Float64,N}(ndims...)
-
-function PaddedArray(a::AbstractArray{T,N}) where {T<:Float3264,N}
-  t = PaddedArray{T,N}(size(a))
+function PaddedArray{T}(a::AbstractArray{<:Real,N}) where {T<:Float3264,N}
+  t = PaddedArray{T}(size(a))
   @inbounds copy!(t.r, a) 
   return t
 end
+PaddedArray(a::AbstractArray{<:Real}) = PaddedArray{Float64}(a)
 
 ###########################################################################################
 
@@ -134,8 +133,7 @@ end
 
 plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
-*(p::M.ScaledPlan,f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = begin
-  #A_mul_B!(real(f),p.p,complex(f))
+*(p::M.ScaledPlan,f::AbstractPaddedArray) = begin
   p.p * f
   scale!(rawreal(f),p.scale)
   real(f)
