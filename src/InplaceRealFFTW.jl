@@ -1,7 +1,7 @@
 __precompile__()
 module InplaceRealFFTW
 
-import Base: size, IndexStyle, getindex, setindex!, eltype, *, /, \, similar, copy, broadcast, real, complex, read!
+import Base: size, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, complex, read!
 
 if VERSION >= v"0.7-"
   import FFTW
@@ -126,11 +126,6 @@ end
 irfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_irfft!(f,region) * f
 
 ##########################################################################################
-
-function /(f::AbstractPaddedArray{T,N},p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}) where {T<:Float3264,N}
-  isdefined(p,:pinv) || (p.pinv = plan_irfft!(f,p.region))
-  return p.pinv * f
-end
 
 function \(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N}
   isdefined(p,:pinv) || (p.pinv = plan_irfft!(f,p.region))
