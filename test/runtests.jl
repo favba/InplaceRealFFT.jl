@@ -50,3 +50,11 @@ a = rand(4,4)
 b = PaddedArray(a)
 rfft!(b)
 @test (brfft!(b) ./ 16) ≈ a
+
+c = similar(b)
+p = plan_rfft!(c,flags=FFTW.MEASURE)
+p.pinv = plan_irfft!(c,flags=FFTW.MEASURE)
+c .= b 
+@test c == b
+@test p*c ≈ rfft!(b)
+@test p\c ≈ irfft!(b)
