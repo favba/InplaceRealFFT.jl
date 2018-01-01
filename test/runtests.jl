@@ -1,4 +1,4 @@
-using InplaceRealFFTW
+using InplaceRealFFT
 using Base.Test
 
 VERSION >= v"0.7-" && using FFTW
@@ -45,3 +45,16 @@ for s in ((8,4,4),(9,4,4),(8,),(9,))
   write(f,a)
   @test a == real(PaddedArray{Float32}(f,s,false))
 end
+
+a = rand(4,4)
+b = PaddedArray(a)
+rfft!(b)
+@test (brfft!(b) ./ 16) ≈ a
+
+c = similar(b)
+p = plan_rfft!(c,flags=FFTW.MEASURE)
+p.pinv = plan_irfft!(c,flags=FFTW.MEASURE)
+c .= b 
+@test c == b
+@test p*c ≈ rfft!(b)
+@test p\c ≈ irfft!(b)
