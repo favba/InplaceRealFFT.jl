@@ -14,9 +14,9 @@ export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_b
 
 const Float3264 = Union{Float32,Float64}
 
-abstract type AbstractPaddedArray{T,N,L} <: DenseArray{Complex{T},N} end
+abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
-struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N,L}
+struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
   c::Array{Complex{T},N} # Complex view of the array
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
 
@@ -49,9 +49,9 @@ similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),siz
 size(S::AbstractPaddedArray) = size(complex(S))
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
 Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray, i::Int) = getindex(complex(S),i)
-Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N,L}, I::Vararg{Int, N}) where {T,N,L} = getindex(complex(S),I...)
+Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = getindex(complex(S),I...)
 Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
-Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
+Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} =  setindex!(complex(S),v,I...)
 # AbstractPaddedArray interface end
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
