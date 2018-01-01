@@ -1,4 +1,4 @@
-using InplaceRealFFTW
+using InplaceRealFFT
 using Base.Test
 
 VERSION >= v"0.7-" && using FFTW
