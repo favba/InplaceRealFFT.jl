@@ -39,18 +39,17 @@ PaddedArray(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N} = PaddedArray
 
 @inline real(S::PaddedArray) = S.r
 @inline complex(S::PaddedArray) = S.c
+copy(S::PaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
+similar(f::PaddedArray{T,N,L}, ::Type{T2}=T, dims::Tuple{Vararg{Int64,N}}=size(f)) where {T, T2, N,L} = PaddedArray{T2}(dims)
 
+# AbstractPaddedArray interface
 size(S::AbstractPaddedArray) = size(complex(S))
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
 Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray, i::Int) = getindex(complex(S),i)
 Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N,L}, I::Vararg{Int, N}) where {T,N,L} = getindex(complex(S),I...)
 Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) =  setindex!(complex(S),v,i)
 Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N,L},v,I::Vararg{Int,N}) where {T,N,L} =  setindex!(complex(S),v,I...)
-copy(S::AbstractPaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
-similar(f::AbstractPaddedArray,::Type{T},dims::Tuple{Vararg{Int64,N}}) where {T, N} = PaddedArray{T}(dims)
-similar(f::AbstractPaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray{T}(dims)
-similar(f::AbstractPaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f)))
-similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1])
+# AbstractPaddedArray interface end
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
   fsize = ndims[1]÷2 + 1
