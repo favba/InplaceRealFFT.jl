@@ -1,5 +1,5 @@
 __precompile__()
-module InplaceRealFFTW
+module InplaceRealFFT
 
 import Base: size, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, complex, read!
 
