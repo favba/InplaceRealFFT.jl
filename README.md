@@ -1,8 +1,8 @@
-# InplaceRealFFTW.jl
+# InplaceRealFFT.jl
 
-[![Build Status](https://travis-ci.org/favba/InplaceRealFFTW.jl.svg?branch=master)](https://travis-ci.org/favba/InplaceRealFFTW.jl)
+[![Build Status](https://travis-ci.org/favba/InplaceRealFFT.jl.svg?branch=master)](https://travis-ci.org/favba/InplaceRealFFT.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/b35ephpx1s1uj97m/branch/master?svg=true)](https://ci.appveyor.com/project/favba/inplacerealfftw-jl/branch/master)
-[![Coverage Status](https://coveralls.io/repos/github/favba/InplaceRealFFTW.jl/badge.svg?branch=master)](https://coveralls.io/github/favba/InplaceRealFFTW.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/favba/InplaceRealFFT.jl/badge.svg?branch=master)](https://coveralls.io/github/favba/InplaceRealFFT.jl?branch=master)
 
 This package provides in-place real-to-complex (`rfft!`) and complex-to-real (`irfft! or brfft!`) Fast Fourier transforms through the `PaddedArray` type and the FFTW library.
 Those transformations require [padding](http://www.fftw.org/fftw3_doc/Real_002ddata-DFT-Array-Format.html#Real_002ddata-DFT-Array-Format) of the real data, which is done automatically by the `PaddedArray` type.
@@ -10,7 +10,7 @@ Those transformations require [padding](http://www.fftw.org/fftw3_doc/Real_002dd
 ## Quick start
 
 ```julia
-julia> using InplaceRealFFTW
+julia> using InplaceRealFFT
 
 julia> a = rand(8,8);
 
@@ -34,7 +34,7 @@ julia> rfft!(b) == rfft(a) # Inplace real-to-complex transformation.
 true
 
 julia> b # The PaddedArray acts the same way as the complex view of the data.
-5×8 InplaceRealFFTW.PaddedArray{Float64,2,false}:
+5×8 InplaceRealFFT.PaddedArray{Float64,2,false}:
   31.6573+0.0im       -2.90925-3.83939im     2.11563+1.72884im    …   2.11563-1.72884im   -2.90925+3.83939im
   2.35205-2.5001im    -0.58157-4.85974im     1.20488+1.97291im       0.939899-0.487852im   1.97138+0.0276521im
  0.445956+0.763535im  -1.10923+3.15186im    0.659003+0.0507059im      3.24141+1.76044im   0.469835+1.66771im
@@ -61,7 +61,7 @@ julia> irfft!(b) # inplace complex-to-real transform, the function returns the r
  0.625984  0.167037    0.926273   0.691699   0.977561  0.31093    0.53347      0.533091
  
  julia> b # See, it changed!
-5×8 InplaceRealFFTW.PaddedArray{Float64,2,false}:
+5×8 InplaceRealFFT.PaddedArray{Float64,2,false}:
    0.93659+0.109875im    0.87329+0.666899im     0.346501+0.838005im  …    0.0995318+0.0668872im   0.669844+0.117582im
   0.989863+0.577207im   0.606462+0.498214im      0.89497+0.729158im        0.611392+0.501753im    0.541901+0.714163im
   0.156463+0.255844im   0.380791+0.00797572im  0.0988714+0.865057im     0.000694876+0.852273im    0.410209+0.0511616im
@@ -75,7 +75,7 @@ FFTW in-place real-to-complex plan for 8×8 (1, 10)-strided array of Float64
   (dft-direct-8-x5 "n1fv_8_avx"))
 
 julia> p*b
-5×8 InplaceRealFFTW.PaddedArray{Float64,2,false}:
+5×8 InplaceRealFFT.PaddedArray{Float64,2,false}:
   31.6573+0.0im       -2.90925-3.83939im     2.11563+1.72884im    …   2.11563-1.72884im   -2.90925+3.83939im
   2.35205-2.5001im    -0.58157-4.85974im     1.20488+1.97291im       0.939899-0.487852im   1.97138+0.0276521im
  0.445956+0.763535im  -1.10923+3.15186im    0.659003+0.0507059im      3.24141+1.76044im   0.469835+1.66771im
