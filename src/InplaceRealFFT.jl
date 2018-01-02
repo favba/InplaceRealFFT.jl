@@ -40,8 +40,8 @@ PaddedArray(c::Array{Complex{T},N},nx::Int) where {T<:Float3264,N} = PaddedArray
 @inline real(S::PaddedArray) = S.r
 @inline complex(S::PaddedArray) = S.c
 copy(S::PaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
-similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int64,N}}) where {T, N} = PaddedArray{T}(dims) 
-similar(f::PaddedArray{T,N,L},dims::Tuple) where {T,N,L} = PaddedArray{T}(dims) 
+similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
+similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
 similar(f::PaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f))) 
 similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1]) 
 
