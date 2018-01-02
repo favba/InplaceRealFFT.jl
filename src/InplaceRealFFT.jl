@@ -43,7 +43,7 @@ copy(S::PaddedArray) = PaddedArray(copy(complex(S)),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
 similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
 similar(f::PaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f))) 
-similar(f::PaddedArray{T,N,L}) where {T,N,L} = PaddedArray{T,N}(similar(f.c),size(real(f))[1]) 
+similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(complex(f)),size(real(f))[1]) 
 
 # AbstractPaddedArray interface
 size(S::AbstractPaddedArray) = size(complex(S))
