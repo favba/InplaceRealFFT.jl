@@ -129,7 +129,25 @@ b.r ./= 64
 
 ```
 
-## Using `rfft!` and `irfft!` with custom types: `AbstractPaddedArray` Interface.
+## Using `rfft!` and `irfft!` with custom types: `AbstractPaddedArray` interface.
 
+The inplace FFT is available to any subtype of the `AbstractPaddedArray` type. One just need to implement methods `Base.real` and `Base.complex` for the custom type and `rfft!` and `irfft!` should readily work:
 
+```julia
+using InplaceRealFFT
 
+struct MyCustomArray{T} <: AbstractPaddedArray{T,3}
+  data::PaddedArray{T,3,false} 
+  str::String
+  int::Int
+end
+
+@inline Base.real(a::MyCustomArray) = real(a.data)
+@inline Base.complex(a::MyCustomArray) = complex(a.data)
+
+a = MyCustomArray(PaddedArray(rand(8,8,8)),"My String",100)
+
+rfft!(a)
+
+irfft!(a)
+```
