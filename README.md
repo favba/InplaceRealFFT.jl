@@ -1,7 +1,7 @@
 # InplaceRealFFT.jl
 
 [![Build Status](https://travis-ci.org/favba/InplaceRealFFT.jl.svg?branch=master)](https://travis-ci.org/favba/InplaceRealFFT.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/b35ephpx1s1uj97m/branch/master?svg=true)](https://ci.appveyor.com/project/favba/inplacerealfft-jl/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/b35ephpx1s1uj97m?svg=true)](https://ci.appveyor.com/project/favba/inplacerealfftw-jl)
 [![Coverage Status](https://coveralls.io/repos/github/favba/InplaceRealFFT.jl/badge.svg?branch=master)](https://coveralls.io/github/favba/InplaceRealFFT.jl?branch=master)
 
 This package provides in-place real-to-complex (`rfft!`) and complex-to-real (`irfft! or brfft!`) Fast Fourier transforms through the `PaddedArray` type and the FFTW library.
