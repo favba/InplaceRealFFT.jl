@@ -36,13 +36,13 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
     fsize = fsize÷2
     csize = (fsize, rrsize[2:end]...)
     if VERSION >= v"0.7-" 
-      Base.@gc_preserve rr c = unsafe_wrap(Array{Complex{T},N},reinterpret(Ptr{Complex{T}},pointer(rr)),csize)
+      @gc_preserve rr c = unsafe_wrap(Array{Complex{T},N},reinterpret(Ptr{Complex{T}},pointer(rr)),csize)
     else 
       c = reinterpret(Complex{T}, rr, csize)
     end
     rsize = (nx,rrsize[2:end]...)
     r = view(rr,(1:l for l in rsize)...)
-    return  Base.@gc_preserve rr new{T, N, N === 1 ? true : false}(c,r)
+    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(c,r)
   end # function
 
 end # struct
@@ -58,12 +58,12 @@ similar(f::PaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f)))
 similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(parent(real(f))),size(real(f))[1]) 
 
 # AbstractPaddedArray interface
-size(S::AbstractPaddedArray) = Base.@gc_preserve S size(unsafe_complex_view(S))
+size(S::AbstractPaddedArray) = @gc_preserve S size(unsafe_complex_view(S))
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
-Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray, i::Int) = Base.@gc_preserve S getindex(unsafe_complex_view(S),i)
-Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = Base.@gc_preserve S getindex(unsafe_complex_view(S),I...)
-Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) = Base.@gc_preserve S setindex!(unsafe_complex_view(S),v,i)
-Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} = Base.@gc_preserve S setindex!(unsafe_complex_view(S),v,I...)
+Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray, i::Int) = @gc_preserve S getindex(unsafe_complex_view(S),i)
+Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = @gc_preserve S getindex(unsafe_complex_view(S),I...)
+Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) = @gc_preserve S setindex!(unsafe_complex_view(S),v,i)
+Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} = @gc_preserve S setindex!(unsafe_complex_view(S),v,I...)
 # AbstractPaddedArray interface end
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
@@ -90,17 +90,17 @@ function plan_rfft!(X::AbstractPaddedArray{T,N}, region;
 
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.ESTIMATE != 0
-    Base.@gc_preserve X p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), unsafe_complex_view(X), region, flags, timelimit)
+    @gc_preserve X p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), unsafe_complex_view(X), region, flags, timelimit)
   else
     x = similar(X)
-    Base.@gc_preserve x p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), unsafe_complex_view(x), region, flags, timelimit)
+    @gc_preserve x p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), unsafe_complex_view(x), region, flags, timelimit)
   end
   return p
 end
 
 plan_rfft!(f::AbstractPaddedArray;kws...) = plan_rfft!(f,1:ndims(f);kws...)
 
-*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (Base.@gc_preserve f A_mul_B!(unsafe_complex_view(f),p,real(f));f)
+*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (@gc_preserve f A_mul_B!(unsafe_complex_view(f),p,real(f));f)
 
 rfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_rfft!(f,region) * f
 
@@ -113,15 +113,15 @@ function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.PRESERVE_INPUT != 0
     a = similar(X)
-    return Base.@gc_preserve a FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(a), real(a), region, flags,timelimit)
+    return @gc_preserve a FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(a), real(a), region, flags,timelimit)
   else
-    return Base.@gc_preserve X FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(X), real(X), region, flags,timelimit)
+    return @gc_preserve X FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(X), real(X), region, flags,timelimit)
   end
 end
 
 plan_brfft!(f::AbstractPaddedArray;kws...) = plan_brfft!(f,1:ndims(f);kws...)
 
-*(p::FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (Base.@gc_preserve f A_mul_B!(real(f),p,unsafe_complex_view(f)); real(f))
+*(p::FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (@gc_preserve f A_mul_B!(real(f),p,unsafe_complex_view(f)); real(f))
 
 brfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_brfft!(f,region) * f
 
