@@ -16,17 +16,15 @@ end
 const M = VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 #For compatibility between Julia v0.6 and v0.7 - end
 
-
 export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, brfft!, irfft!
 
 const Float3264 = Union{Float32,Float64}
 
 abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
-struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
-  #c::(VERSION >= v"0.7-" ? Base.ReshapedArray{Complex{T},N,Base.ReinterpretArray{Complex{T},1,T,Array{T,1}},Tuple{}} : Array{Complex{T},N})
-  unsafe_complex_view::Array{Complex{T},N}
+@eval struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
+  ($(Symbol("#c")))::Array{Complex{T},N}
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     rrsize = size(rr)
@@ -42,7 +40,7 @@ struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
     end
     rsize = (nx,rrsize[2:end]...)
     r = view(rr,(1:l for l in rsize)...)
-    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(c,r)
+    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(r,c)
   end # function
 
 end # struct
@@ -50,7 +48,7 @@ end # struct
 PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr,nx)
 
 @inline real(S::PaddedArray) = S.r
-@inline unsafe_complex_view(S::PaddedArray) = S.unsafe_complex_view
+@inline unsafe_complex_view(S::PaddedArray) = getfield(S,Symbol("#c"))
 copy(S::PaddedArray) = PaddedArray(copy(parent(real(S))),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
 similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
