@@ -20,11 +20,12 @@ export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_b
 
 const Float3264 = Union{Float32,Float64}
 
+const c = Symbol("#c")
 abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
 @eval struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
-  ($(Symbol("#c")))::Array{Complex{T},N}
+  ($c)::Array{Complex{T},N}
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     rrsize = size(rr)
@@ -48,7 +49,7 @@ end # struct
 PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr,nx)
 
 @inline real(S::PaddedArray) = S.r
-@inline unsafe_complex_view(S::PaddedArray) = getfield(S,Symbol("#c"))
+@inline unsafe_complex_view(S::PaddedArray) = getfield(S,c)
 copy(S::PaddedArray) = PaddedArray(copy(parent(real(S))),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
 similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
