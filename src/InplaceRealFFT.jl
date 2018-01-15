@@ -49,7 +49,7 @@ end # struct
 PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr,nx)
 
 @inline real(S::PaddedArray) = S.r
-@inline unsafe_complex_view(S::PaddedArray) = getfield(S,c)
+@eval @inline unsafe_complex_view(S::PaddedArray) = S.$c
 copy(S::PaddedArray) = PaddedArray(copy(parent(real(S))),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
 similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
