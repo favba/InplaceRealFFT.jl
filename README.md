@@ -41,14 +41,6 @@ b # The PaddedArray acts the same way as the complex view of the data.
 #  1.61721+3.54008im     1.1342+0.36402im   -0.856937-0.249445im      0.615628-2.54437im    2.37486+0.751845im
 # -2.43398+0.0im        2.30783+0.466147im    3.53816-0.692175im       3.53816+0.692175im   2.30783-0.466147im
 
-b.c # returns the complex view of the array, same as complex(b).
-#5×8 Array{Complex{Float64},2}:
-#  31.6573+0.0im       -2.90925-3.83939im     2.11563+1.72884im    …   2.11563-1.72884im   -2.90925+3.83939im
-#  2.35205-2.5001im    -0.58157-4.85974im     1.20488+1.97291im       0.939899-0.487852im   1.97138+0.0276521im
-# 0.445956+0.763535im  -1.10923+3.15186im    0.659003+0.0507059im      3.24141+1.76044im   0.469835+1.66771im
-#  1.61721+3.54008im     1.1342+0.36402im   -0.856937-0.249445im      0.615628-2.54437im    2.37486+0.751845im
-# -2.43398+0.0im        2.30783+0.466147im    3.53816-0.692175im       3.53816+0.692175im   2.30783-0.466147im
- 
 irfft!(b) # inplace complex-to-real transform, the function returns the real view.
 #8×8 SubArray{Float64,2,Array{Float64,2},Tuple{UnitRange{Int64},UnitRange{Int64}},false}:
 # 0.93659   0.87329     0.346501   0.801544   0.941651  0.0877721  0.0995318    0.669844
@@ -131,7 +123,7 @@ b.r ./= 64
 
 ## Using `rfft!` and `irfft!` with custom types: `AbstractPaddedArray` interface.
 
-The inplace FFT is available to any subtype of the `AbstractPaddedArray` type. One just need to implement methods `Base.real` and `Base.complex` for the custom type and `rfft!` and `irfft!` should readily work:
+The inplace FFT is available to any subtype of the `AbstractPaddedArray` type. One just need to implement methods `Base.real` and `InplaceRealFFT.unsafe_complex_view` for the custom type and `rfft!` and `irfft!` should readily work:
 
 ```julia
 using InplaceRealFFT
@@ -143,7 +135,7 @@ struct MyCustomArray{T} <: AbstractPaddedArray{T,3}
 end
 
 @inline Base.real(a::MyCustomArray) = real(a.data)
-@inline Base.complex(a::MyCustomArray) = complex(a.data)
+@inline InplaceRealFFT.unsafe_complex_view(a::MyCustomArray) = InplaceRealFFT.unsafe_complex_view(a.data)
 
 a = MyCustomArray(PaddedArray(rand(8,8,8)),"My String",100)
 
