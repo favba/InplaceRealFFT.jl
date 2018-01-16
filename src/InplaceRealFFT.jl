@@ -1,10 +1,10 @@
 __precompile__()
 module InplaceRealFFT
 
-import Base: size, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, read!
+import Base: size, length, start, next, done, indices, linearindices, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, read!
 
 #For compatibility between Julia v0.6 and v0.7 - begin
-if VERSION >= v"0.7-"
+@static if VERSION >= v"0.7-"
   import FFTW
   import AbstractFFTs
   using Base.@gc_preserve
@@ -13,7 +13,7 @@ else
     return esc(ex)
   end
 end
-const M = VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
+const M = @static VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 #For compatibility between Julia v0.6 and v0.7 - end
 
 export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, brfft!, irfft!
@@ -57,12 +57,32 @@ similar(f::PaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f)))
 similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(parent(real(f))),size(real(f))[1]) 
 
 # AbstractPaddedArray interface
-size(S::AbstractPaddedArray) = @gc_preserve S size(unsafe_complex_view(S))
+# iteration
+@inline start(A::AbstractPaddedArray) = @gc_preserve A start(unsafe_complex_view(A))
+@inline next(A::AbstractPaddedArray, i) = @gc_preserve A next(unsafe_complex_view(A), i)
+@inline done(A::AbstractPaddedArray, i) = @gc_preserve A done(unsafe_complex_view(A), i)
+
+# size
+@inline length(A::AbstractPaddedArray) = @gc_preserve A length(unsafe_complex_view(A))
+@inline size(A::AbstractPaddedArray) = @gc_preserve A size(unsafe_complex_view(A))
+
+# indexing
+@inline function getindex(A::AbstractPaddedArray, I...)
+  @gc_preserve A begin
+    @boundscheck checkbounds(unsafe_complex_view(A), I...)
+    @inbounds return unsafe_complex_view(A)[I...]
+  end
+end
+@inline function setindex!(A::AbstractPaddedArray, x, I...)
+  @gc_preserve A begin
+    @boundscheck checkbounds(unsafe_complex_view(A), I...)
+    @inbounds unsafe_complex_view(A)[I...] = x
+  end
+end
+@inline indices(A::AbstractPaddedArray) = @gc_preserve A indices(unsafe_complex_view(A))
+@inline linearindices(A::AbstractPaddedArray) = @gc_preserve A linearindices(unsafe_complex_view(A))
+
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
-Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray, i::Int) = @gc_preserve S getindex(unsafe_complex_view(S),i)
-Base.@propagate_inbounds @inline getindex(S::AbstractPaddedArray{T,N}, I::Vararg{Int, N}) where {T,N} = @gc_preserve S getindex(unsafe_complex_view(S),I...)
-Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray,v,i::Int) = @gc_preserve S setindex!(unsafe_complex_view(S),v,i)
-Base.@propagate_inbounds @inline setindex!(S::AbstractPaddedArray{T,N},v,I::Vararg{Int,N}) where {T,N} = @gc_preserve S setindex!(unsafe_complex_view(S),v,I...)
 # AbstractPaddedArray interface end
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
