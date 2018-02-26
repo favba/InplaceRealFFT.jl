@@ -8,6 +8,7 @@ import Base: size, length, start, next, done, indices, linearindices, IndexStyle
   import FFTW
   import AbstractFFTs
   using Base.@gc_preserve
+  using FFTW.A_mul_B!
 else
   macro gc_preserve(s::Symbol,ex::Expr)
     return esc(ex)
