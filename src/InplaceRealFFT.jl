@@ -65,7 +65,7 @@ similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(pare
 
 # iteration
 @inline start(A::AbstractPaddedArray) = 1
-@inline next(A::AbstractPaddedArray, i) = (@inbounds A[i], i+1)
+@inline next(A::AbstractPaddedArray, i) = (@inbounds(A[i]), i+1)
 @inline done(A::AbstractPaddedArray, i) = i > length(A) ? true : false
 
 # size
@@ -111,7 +111,7 @@ end
 
 @inline function setindex!(A::AbstractPaddedArray{T,N},x, i::Integer) where {T,N}
   d = data(A)
-  @boundscheck checkbounds(d,i)
+  @boundscheck checkbounds(d,2i)
   @inbounds begin 
     d[2i-1] = real(x)
     d[2i] = imag(x)
