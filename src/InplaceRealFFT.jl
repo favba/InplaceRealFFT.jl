@@ -65,7 +65,7 @@ similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(pare
 
 # iteration
 @inline start(A::AbstractPaddedArray) = 1
-@inline next(A::AbstractPaddedArray, i) = (@inbounds(A[i]), i+1)
+@inline next(A::AbstractPaddedArray, i) = @inbounds begin return (A[i], i+1) end
 @inline done(A::AbstractPaddedArray, i) = i > length(A) ? true : false
 
 # size
