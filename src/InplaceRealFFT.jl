@@ -25,6 +25,7 @@ const c = Symbol("#c")
 abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
 @eval struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
+  data::Array{T,N}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
   ($c)::Array{Complex{T},N}
 
@@ -42,7 +43,7 @@ abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
     end
     rsize = (nx,rrsize[2:end]...)
     r = view(rr,(1:l for l in rsize)...)
-    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(r,c)
+    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(rr,r,c)
   end # function
 
 end # struct
@@ -51,6 +52,7 @@ PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr
 
 @inline real(S::PaddedArray) = S.r
 @eval @inline unsafe_complex_view(S::PaddedArray) = S.$c
+@inline data(S::PaddedArray) = S.data
 copy(S::PaddedArray) = PaddedArray(copy(parent(real(S))),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
 similar(f::PaddedArray{T,N,L},dims::NTuple{N2,Int}) where {T,N,L,N2} = PaddedArray{T}(dims) 
@@ -58,32 +60,100 @@ similar(f::PaddedArray,::Type{T}) where {T} = PaddedArray{T}(size(real(f)))
 similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(parent(real(f))),size(real(f))[1]) 
 
 # AbstractPaddedArray interface
+
+@inline data(S::AbstractPaddedArray) = parent(real(S))
+
 # iteration
-@inline start(A::AbstractPaddedArray) = @gc_preserve A start(unsafe_complex_view(A))
-@inline next(A::AbstractPaddedArray, i) = @gc_preserve A next(unsafe_complex_view(A), i)
-@inline done(A::AbstractPaddedArray, i) = @gc_preserve A done(unsafe_complex_view(A), i)
+@inline start(A::AbstractPaddedArray) = 1
+@inline next(A::AbstractPaddedArray, i) = (@inbounds A[i], i+1)
+@inline done(A::AbstractPaddedArray, i) = i > length(A) ? true : false
 
 # size
-@inline length(A::AbstractPaddedArray) = @gc_preserve A length(unsafe_complex_view(A))
-@inline size(A::AbstractPaddedArray) = @gc_preserve A size(unsafe_complex_view(A))
+@inline length(A::AbstractPaddedArray) = length(data(A))÷2
+
+@inline @generated function size(A::AbstractPaddedArray{T,N}) where {T,N}
+  r = Expr(:tuple)
+  push!(r.args,:(Asize[1]÷2))
+  for i=2:N
+    push!(r.args,:(Asize[$i]))
+  end
+  quote
+    Asize = size(data(A))
+    return $r
+  end
+end
 
 # indexing
-@inline function getindex(A::AbstractPaddedArray, I...)
-  @gc_preserve A begin
-    @boundscheck checkbounds(unsafe_complex_view(A), I...)
-    @inbounds return unsafe_complex_view(A)[I...]
+@inline function getindex(A::AbstractPaddedArray{T,N}, i::Integer) where {T,N}
+  d = data(A)
+  @boundscheck checkbounds(d,2i)
+  @inbounds begin 
+    return Complex{T}(d[2i-1],d[2i])
   end
 end
-@inline function setindex!(A::AbstractPaddedArray, x, I...)
-  @gc_preserve A begin
-    @boundscheck checkbounds(unsafe_complex_view(A), I...)
-    @inbounds unsafe_complex_view(A)[I...] = x
+
+@inline @generated function getindex(A::AbstractPaddedArray{T,N}, I2::Vararg{Integer,N}) where {T,N}
+  ip = :(2*I2[1])
+  t = Expr(:tuple)
+  for i=2:N
+    push!(t.args,:(I2[$i]))
+  end
+  quote
+    d = data(A)
+    i = $ip
+    I = $t
+    @boundscheck checkbounds(d,i,I...)
+    @inbounds begin 
+      return Complex{T}(d[i-1,I...],d[i,I...])
+    end
   end
 end
-@inline indices(A::AbstractPaddedArray) = @gc_preserve A indices(unsafe_complex_view(A))
-@inline linearindices(A::AbstractPaddedArray) = @gc_preserve A linearindices(unsafe_complex_view(A))
+
+@inline function setindex!(A::AbstractPaddedArray{T,N},x, i::Integer) where {T,N}
+  d = data(A)
+  @boundscheck checkbounds(d,i)
+  @inbounds begin 
+    d[2i-1] = real(x)
+    d[2i] = imag(x)
+  end
+end
+
+@inline @generated function setindex!(A::AbstractPaddedArray{T,N}, x, I2::Vararg{Integer,N}) where {T,N}
+  ip = :(2*I2[1])
+  t = Expr(:tuple)
+  for i=2:N
+    push!(t.args,:(I2[$i]))
+  end
+  quote
+    d = data(A)
+    i = $ip
+    I = $t
+    @boundscheck checkbounds(d,i,I...)
+    @inbounds begin 
+      d[i-1,I...] = real(x)
+      d[i,I...] = imag(x)
+    end
+  end
+end
+
+@inline @generated function indices(A::AbstractPaddedArray{T,N}) where {T,N}
+  r = Expr(:tuple)
+  push!(r.args,:(Base.OneTo(Asize[1]÷2)))
+  for i=2:N
+    push!(r.args,:(Base.OneTo(Asize[$i])))
+  end
+  quote
+    Asize = size(data(A))
+    return $r
+  end
+end
+
+@inline linearindices(A::AbstractPaddedArray) = Base.OneTo(length(A))
 
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
+
+Base.unsafe_convert(::Type{Ptr{Complex{T}}},A::AbstractPaddedArray{T,N}) where {T,N} = convert(Ptr{Complex{T}},pointer(data(A)))
+
 # AbstractPaddedArray interface end
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
