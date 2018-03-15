@@ -77,7 +77,7 @@ struct WrappedArray{T,N,L} <: AbstractPaddedArray{T,N}
 end
 
 @inline Base.real(a::WrappedArray) = real(a.data)
-@inline InplaceRealFFT.unsafe_complex_view(a::WrappedArray) = InplaceRealFFT.unsafe_complex_view(a.data)
+@inline InplaceRealFFT.complex_view(a::WrappedArray) = InplaceRealFFT.complex_view(a.data)
 
 @testset "AbstractPaddedArray Interface" begin
 

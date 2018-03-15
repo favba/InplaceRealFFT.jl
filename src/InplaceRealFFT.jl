@@ -7,12 +7,12 @@ import Base: size, length, start, next, done, indices, linearindices, IndexStyle
 @static if VERSION >= v"0.7-"
   import FFTW
   import AbstractFFTs
-  using Base.@gc_preserve
-  using FFTW.A_mul_B!
+  import LinearAlgebra: mul!
+  using LinearAlgebra
 else
-  macro gc_preserve(s::Symbol,ex::Expr)
-    return esc(ex)
-  end
+  mul!(x,B,y) = A_mul_B!(x,B,y)
+  copyto!(dts,src) = copy!(dts,src)
+  rmul!(B,x) = scale!(B,x)
 end
 const M = @static VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 #For compatibility between Julia v0.6 and v0.7 - end
@@ -21,13 +21,12 @@ export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_b
 
 const Float3264 = Union{Float32,Float64}
 
-const c = Symbol("#c")
 abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
-@eval struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
+struct PaddedArray{T<:Float3264,N,L} <: AbstractPaddedArray{T,N}
   data::Array{T,N}
   r::SubArray{T,N,Array{T,N},NTuple{N,UnitRange{Int}},L} # Real view skipping padding
-  ($c)::Array{Complex{T},N}
+  c::(@static VERSION >= v"0.7-" ? Base.ReinterpretArray{Complex{T},N,T,Array{T,N}} : Array{Complex{T},N})
 
   function PaddedArray{T,N}(rr::Array{T,N},nx::Int) where {T<:Float3264,N}
     rrsize = size(rr)
@@ -36,14 +35,10 @@ abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
     (nx == fsize-2 || nx == fsize-1) || throw(ArgumentError("Number of elements on the first dimension of array must be either 1 or 2 less than the number of elements on the first dimension of the allocated array"))
     fsize = fsize÷2
     csize = (fsize, rrsize[2:end]...)
-    if VERSION >= v"0.7-" 
-      @gc_preserve rr c = unsafe_wrap(Array{Complex{T},N},reinterpret(Ptr{Complex{T}},pointer(rr)),csize)
-    else 
-      c = reinterpret(Complex{T}, rr, csize)
-    end
+    c = @static VERSION >= v"0.7-" ? reinterpret(Complex{T}, rr) : reinterpret(Complex{T}, rr, csize) 
     rsize = (nx,rrsize[2:end]...)
     r = view(rr,(1:l for l in rsize)...)
-    return  @gc_preserve rr new{T, N, N === 1 ? true : false}(rr,r,c)
+    return  new{T, N, N === 1 ? true : false}(rr,r,c)
   end # function
 
 end # struct
@@ -51,7 +46,7 @@ end # struct
 PaddedArray(rr::Array{T,N},nx::Int) where {T<:Float3264,N} = PaddedArray{T,N}(rr,nx)
 
 @inline real(S::PaddedArray) = S.r
-@eval @inline unsafe_complex_view(S::PaddedArray) = S.$c
+@inline complex_view(S::PaddedArray) = S.c
 @inline data(S::PaddedArray) = S.data
 copy(S::PaddedArray) = PaddedArray(copy(parent(real(S))),size(real(S))[1])
 similar(f::PaddedArray,::Type{T},dims::Tuple{Vararg{Int,N}}) where {T, N} = PaddedArray{T}(dims) 
@@ -116,6 +111,7 @@ end
     d[2i-1] = real(x)
     d[2i] = imag(x)
   end
+  A
 end
 
 @inline @generated function setindex!(A::AbstractPaddedArray{T,N}, x, I2::Vararg{Integer,N}) where {T,N}
@@ -133,6 +129,7 @@ end
       d[i-1,I...] = real(x)
       d[i,I...] = imag(x)
     end
+    A
   end
 end
 
@@ -158,7 +155,7 @@ Base.unsafe_convert(::Type{Ptr{Complex{T}}},A::AbstractPaddedArray{T,N}) where {
 
 function PaddedArray{T}(ndims::Vararg{Integer,N}) where {T,N}
   fsize = (ndims[1]÷2 + 1)*2
-  a = Array{T,N}((fsize,ndims[2:end]...))
+  a = zeros(T,(fsize,ndims[2:end]...))
   PaddedArray{T,N}(a,ndims[1])
 end
 PaddedArray{T}(ndims::NTuple{N,Integer}) where {T,N} = PaddedArray{T}(ndims...)
@@ -167,7 +164,7 @@ PaddedArray(ndims::NTuple{N,Integer}) where N = PaddedArray{Float64}(ndims...)
 
 function PaddedArray{T}(a::AbstractArray{<:Real,N}) where {T<:Float3264,N}
   t = PaddedArray{T}(size(a))
-  @inbounds copy!(t.r, a) 
+  @inbounds copyto!(t.r, a) 
   return t
 end
 PaddedArray(a::AbstractArray{<:Real}) = PaddedArray{Float64}(a)
@@ -180,17 +177,17 @@ function plan_rfft!(X::AbstractPaddedArray{T,N}, region;
 
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.ESTIMATE != 0
-    @gc_preserve X p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), unsafe_complex_view(X), region, flags, timelimit)
+    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), complex_view(X), region, flags, timelimit)
   else
     x = similar(X)
-    @gc_preserve x p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), unsafe_complex_view(x), region, flags, timelimit)
+    p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), complex_view(x), region, flags, timelimit)
   end
   return p
 end
 
 plan_rfft!(f::AbstractPaddedArray;kws...) = plan_rfft!(f,1:ndims(f);kws...)
 
-*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (@gc_preserve f A_mul_B!(unsafe_complex_view(f),p,real(f));f)
+*(p::FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (mul!(complex_view(f),p,real(f));f)
 
 rfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_rfft!(f,region) * f
 
@@ -203,15 +200,15 @@ function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
   (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
   if flags&FFTW.PRESERVE_INPUT != 0
     a = similar(X)
-    return @gc_preserve a FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(a), real(a), region, flags,timelimit)
+    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(a), real(a), region, flags,timelimit)
   else
-    return @gc_preserve X FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(unsafe_complex_view(X), real(X), region, flags,timelimit)
+    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(X), real(X), region, flags,timelimit)
   end
 end
 
 plan_brfft!(f::AbstractPaddedArray;kws...) = plan_brfft!(f,1:ndims(f);kws...)
 
-*(p::FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (@gc_preserve f A_mul_B!(real(f),p,unsafe_complex_view(f)); real(f))
+*(p::FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},f::AbstractPaddedArray{T,N}) where {T<:Float3264,N} = (mul!(real(f),p,complex_view(f)); real(f))
 
 brfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_brfft!(f,region) * f
 
@@ -223,7 +220,7 @@ plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
 *(p::M.ScaledPlan,f::AbstractPaddedArray) = begin
   p.p * f
-  scale!(parent(real(f)),p.scale)
+  rmul!(parent(real(f)),p.scale)
   real(f)
 end
 
