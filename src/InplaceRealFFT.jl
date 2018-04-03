@@ -17,7 +17,7 @@ end
 const M = @static VERSION >= v"0.7-" ? AbstractFFTs : Base.DFT
 #For compatibility between Julia v0.6 and v0.7 - end
 
-export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, brfft!, irfft!
+export AbstractPaddedArray, PaddedArray , plan_rfft!, rfft!, plan_irfft!, plan_brfft!, brfft!, irfft!, data
 
 const Float3264 = Union{Float32,Float64}
 
