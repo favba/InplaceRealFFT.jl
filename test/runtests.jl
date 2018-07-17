@@ -3,9 +3,7 @@ using Base.Test
 
 VERSION >= v"0.7-" && using FFTW
 
-a = rand(Float64,(8,4,4))
-b = PaddedArray(a)
-c = copy(b)
+let a = rand(Float64,(8,4,4)), b = PaddedArray(a), c = copy(b)
 
 @testset "PaddedArray creation" begin
   @test a == real(b)
@@ -68,6 +66,8 @@ end
   @test c == b
   @test p*c ≈ rfft!(b)
   @test p\c ≈ irfft!(b)
+end
+
 end
 
 struct WrappedArray{T,N,L} <: AbstractPaddedArray{T,N}
