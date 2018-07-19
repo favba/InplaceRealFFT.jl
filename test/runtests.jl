@@ -42,12 +42,13 @@ end
 @testset "Read binary file to PaddedArray" begin
   for s in ((8,4,4),(9,4,4),(8,),(9,))
     aa = rand(Float64,s)
-    f = Base.Filesystem.tempname()
+    f = IOBuffer()
     write(f,aa)
-    @test aa == real(PaddedArray(f,s,false))
+    @test aa == real(PaddedArray(seekstart(f),s,false))
     aa = rand(Float32,s)
+    f = IOBuffer()
     write(f,aa)
-    @test aa == real(PaddedArray{Float32}(f,s,false))
+    @test aa == real(PaddedArray{Float32}(seekstart(f),s,false))
   end
 end
 
