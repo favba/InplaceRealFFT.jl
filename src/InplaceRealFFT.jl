@@ -196,14 +196,14 @@ rfft!(f::AbstractPaddedArray, region=1:ndims(f)) = plan_rfft!(f,region) * f
 ##########################################################################################
 
 function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
-                    flags::Integer=FFTW.PRESERVE_INPUT,
+                    flags::Integer=FFTW.ESTIMATE,
                     timelimit::Real=FFTW.NO_TIMELIMIT) where {T<:Float3264,N}
     (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
-    if flags&FFTW.PRESERVE_INPUT != 0
+    if flags&FFTW.ESTIMATE != 0
+        return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(X), real(X), region, flags,timelimit)
+    else
         a = similar(X)
         return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(a), real(a), region, flags,timelimit)
-    else
-        return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(X), real(X), region, flags,timelimit)
     end
 end
 
