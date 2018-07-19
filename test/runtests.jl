@@ -28,7 +28,7 @@ end
   @test p*c ≈ rfft!(b)
   @test p\c ≈ irfft!(b)
 
-  a = rand(9,4,4)
+  a = rand(Float64,(9,4,4))
   b = PaddedArray(a)
   @test a == real(b)
   @test rfft(a) ≈ rfft!(b) 
@@ -41,7 +41,7 @@ end
 
 @testset "Read binary file to PaddedArray" begin
   for s in ((8,4,4),(9,4,4),(8,),(9,))
-    aa = rand(s)
+    aa = rand(Float64,s)
     f = Base.Filesystem.tempname()
     write(f,aa)
     @test aa == real(PaddedArray(f,s,false))
@@ -52,7 +52,7 @@ end
 end
 
 @testset "brfft!" begin
-  a = rand(4,4)
+  a = rand(Float64,(4,4))
   b = PaddedArray(a)
   rfft!(b)
   @test (brfft!(b) ./ 16) ≈ a
@@ -82,7 +82,7 @@ end
 @testset "AbstractPaddedArray Interface" begin
 
 
-  a = PaddedArray(rand(8,8,8))
+  a = PaddedArray(rand(Float64,(8,8,8)))
   b = copy(a)
 
   field = WrappedArray(b,"test",10)
