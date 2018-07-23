@@ -25,7 +25,7 @@ abstract type AbstractPaddedArray{T,N} <: DenseArray{Complex{T},N} end
 
 struct PaddedArray{T<:Float3264,N,N2,L} <: AbstractPaddedArray{T,N}
     data::Array{T,N}
-    r::SubArray{T,N,Array{T,N},Tuple{UnitRange{Int},Vararg{Base.Slice{Base.OneTo{Int}},N2}},L} # Real view skipping padding
+    r::SubArray{T,N,Array{T,N},Tuple{Base.OneTo{Int},Vararg{Base.Slice{Base.OneTo{Int}},N2}},L} # Real view skipping padding
     c::(@static VERSION >= v"0.7-" ? Base.ReinterpretArray{Complex{T},N,T,Array{T,N}} : Array{Complex{T},N})
 
     function PaddedArray{T,N,N2}(rr::Array{T,N},nx::Integer) where {T<:Float3264,N,N2}
@@ -37,7 +37,7 @@ struct PaddedArray{T<:Float3264,N,N2,L} <: AbstractPaddedArray{T,N}
         csize = (fsize, rrsize[2:end]...)
         c = @static VERSION >= v"0.7-" ? reinterpret(Complex{T}, rr) : reinterpret(Complex{T}, rr, csize) 
         rsize = (nx,rrsize[2:end]...)
-        r = view(rr,1:rsize[1],(Colon() for i=1:N2)...)
+        r = view(rr,Base.OneTo(rsize[1]),ntuple(i->Colon(), @static VERSION >= v"0.7-" ? Val(N2) : Val{N2})...)
         return  new{T, N, N2, N === 1 ? true : false}(rr,r,c)
     end # function
 
