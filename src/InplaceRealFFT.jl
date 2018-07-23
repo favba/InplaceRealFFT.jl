@@ -175,15 +175,8 @@ PaddedArray(a::AbstractArray{<:Real}) = PaddedArray{Float64}(a)
 function plan_rfft!(X::AbstractPaddedArray{T,N}, region;
                    flags::Integer=FFTW.ESTIMATE,
                    timelimit::Real=FFTW.NO_TIMELIMIT) where {T<:Float3264,N}
-
     (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
-    if flags&FFTW.ESTIMATE != 0
-        p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), complex_view(X), region, flags, timelimit)
-    else
-        x = similar(X)
-        p = FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(x), complex_view(x), region, flags, timelimit)
-    end
-    return p
+    return FFTW.rFFTWPlan{T,FFTW.FORWARD,true,N}(real(X), complex_view(X), region, flags, timelimit)
 end
 
 plan_rfft!(f::AbstractPaddedArray;kws...) = plan_rfft!(f,1:ndims(f);kws...)
@@ -199,12 +192,7 @@ function plan_brfft!(X::AbstractPaddedArray{T,N}, region;
                     flags::Integer=FFTW.ESTIMATE,
                     timelimit::Real=FFTW.NO_TIMELIMIT) where {T<:Float3264,N}
     (1 in region) || throw(ArgumentError("The first dimension must always be transformed"))
-    if flags&FFTW.ESTIMATE != 0
-        return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(X), real(X), region, flags,timelimit)
-    else
-        a = similar(X)
-        return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(a), real(a), region, flags,timelimit)
-    end
+    return FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N}(complex_view(X), real(X), region, flags,timelimit)
 end
 
 plan_brfft!(f::AbstractPaddedArray;kws...) = plan_brfft!(f,1:ndims(f);kws...)
