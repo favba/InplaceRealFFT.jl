@@ -207,7 +207,7 @@ end
 
 plan_irfft!(f::AbstractPaddedArray;kws...) = plan_irfft!(f,1:ndims(f);kws...)
 
-*(p::M.ScaledPlan,f::AbstractPaddedArray) = begin
+*(p::M.ScaledPlan{Complex{T},FFTW.rFFTWPlan{Complex{T},FFTW.BACKWARD,true,N},T},f::AbstractPaddedArray) where {T,N} = begin
     p.p * f
     rmul!(parent(real(f)),p.scale)
     real(f)
