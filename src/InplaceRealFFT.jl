@@ -1,7 +1,7 @@
 __precompile__()
 module InplaceRealFFT
 
-import Base: size, length, start, next, done, indices, linearindices, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, read!
+import Base: size, length, IndexStyle, getindex, setindex!, eltype, *,  \, similar, copy, real, read!
 
 #For compatibility between Julia v0.6 and v0.7 - begin
 @static if VERSION >= v"0.7-"
@@ -63,9 +63,13 @@ similar(f::AbstractPaddedArray{T,N}) where {T,N} = PaddedArray{T,N}(similar(pare
 @inline data(S::AbstractPaddedArray) = parent(real(S))
 
 # iteration
-@inline start(A::AbstractPaddedArray) = 1
-@inline next(A::AbstractPaddedArray, i) = @inbounds begin return (A[i], i+1) end
-@inline done(A::AbstractPaddedArray, i) = i > length(A) ? true : false
+@static if VERSION >= v"0.7-"
+    @inline Base.iterate(A::AbstractPaddedArray, i=1) = i > length(A) ? nothing : (@inbounds A[i], i+1)
+else
+    @inline Base.start(A::AbstractPaddedArray) = 1
+    @inline Base.next(A::AbstractPaddedArray, i) = @inbounds begin return (A[i], i+1) end
+    @inline Base.done(A::AbstractPaddedArray, i) = i > length(A) ? true : false
+end
 
 # size
 @inline length(A::AbstractPaddedArray) = length(complex_view(A))
@@ -126,20 +130,35 @@ end
         A
     end
 end
-
-@inline @generated function indices(A::AbstractPaddedArray{T,N}) where {T,N}
-    r = Expr(:tuple)
-    push!(r.args,:(Base.OneTo(Asize[1]÷2)))
-    for i=2:N
-        push!(r.args,:(Base.OneTo(Asize[$i])))
+@static if VERSION >= v"0.7-"
+    @inline @generated function Base.axes(A::AbstractPaddedArray{T,N}) where {T,N}
+        r = Expr(:tuple)
+        push!(r.args,:(Base.OneTo(Asize[1]÷2)))
+        for i=2:N
+            push!(r.args,:(Base.OneTo(Asize[$i])))
+        end
+        quote
+            Asize = size(data(A))
+            return $r
+        end
     end
-    quote
-        Asize = size(data(A))
-        return $r
+else
+    @inline @generated function Base.indices(A::AbstractPaddedArray{T,N}) where {T,N}
+        r = Expr(:tuple)
+        push!(r.args,:(Base.OneTo(Asize[1]÷2)))
+        for i=2:N
+            push!(r.args,:(Base.OneTo(Asize[$i])))
+        end
+        quote
+            Asize = size(data(A))
+            return $r
+        end
     end
 end
 
-@inline linearindices(A::AbstractPaddedArray) = Base.OneTo(length(A))
+@static if VERSION < v"0.7-"
+    @inline Base.linearindices(A::AbstractPaddedArray) = Base.OneTo(length(A))
+end
 
 IndexStyle(::Type{T}) where {T<:AbstractPaddedArray} = IndexLinear()
 

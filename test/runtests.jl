@@ -1,7 +1,10 @@
 using InplaceRealFFT
-using Base.Test
-
-VERSION >= v"0.7-" && using FFTW
+@static if VERSION >= v"0.7-"
+  using Test
+  using FFTW
+else
+  using Base.Test
+end
 
 let a = rand(Float64,(8,4,4)), b = PaddedArray(a), c = copy(b)
 
