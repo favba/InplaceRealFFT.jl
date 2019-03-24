@@ -1,4 +1,5 @@
 name = "InplaceRealFFT"
+uuid = "370c16e2-4e51-11e9-3235-e391f9c4d929"
 authors = ["Felipe Alves <favbalves@gmail.com>"]
 version = "0.1.0"
 
